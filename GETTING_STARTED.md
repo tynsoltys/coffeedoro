@@ -271,8 +271,38 @@ export const useTimerStore = create<TimerState & TimerActions>()(
 
         if (newElapsed >= state.duration) {
           // Session complete!
-          set({ elapsed: 0, isRunning: false });
-          // TODO: Handle session completion, notifications, etc.
+          const newSessionCount = state.mode === 'work' ? state.sessionCount + 1 : state.sessionCount;
+
+          // Determine next mode
+          let nextMode: 'work' | 'shortBreak' | 'longBreak' | 'idle';
+          let nextDuration: number;
+          let autoStart = false;
+
+          if (state.mode === 'work') {
+            // After work, take a break
+            const isLongBreak = newSessionCount % state.settings.longBreakInterval === 0;
+            nextMode = isLongBreak ? 'longBreak' : 'shortBreak';
+            nextDuration = isLongBreak
+              ? state.settings.longBreakDuration
+              : state.settings.shortBreakDuration;
+            autoStart = state.settings.autoStartBreaks;
+          } else {
+            // After break, return to work
+            nextMode = 'work';
+            nextDuration = state.settings.workDuration;
+            autoStart = state.settings.autoStartWork;
+          }
+
+          set({
+            elapsed: 0,
+            isRunning: autoStart,
+            mode: autoStart ? nextMode : 'idle',
+            duration: nextDuration,
+            sessionCount: newSessionCount
+          });
+
+          // Play notification sound or show browser notification
+          // This can be implemented based on your notification strategy
         } else {
           set({ elapsed: newElapsed });
         }
